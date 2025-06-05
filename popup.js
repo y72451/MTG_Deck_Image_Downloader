@@ -1,4 +1,5 @@
 // popup.js
+import { getZipBlob } from './lib/indexeddb.js';
 
 document.addEventListener("DOMContentLoaded", () => {
   const fetchButton = document.getElementById("fetch-deck");
@@ -29,16 +30,23 @@ document.addEventListener("DOMContentLoaded", () => {
 // 接收壓縮完成訊息
 chrome.runtime.onMessage.addListener(async (message, sender) => {
   if (message.type === 'ZIP_READY') {
-    chrome.storage.local.get(['zipData', 'zipName'], (items) => {
-      const blob = dataURLToBlob(items.zipData);
-      const blobUrl = URL.createObjectURL(blob);
+    console.log("收到ZIP ready");
+    try {
+      const { name, blob } = await getZipBlob();
+      console.log("取得zip blob");
+      const url = URL.createObjectURL(blob);
 
       chrome.downloads.download({
-        url: blobUrl,
-        filename: items.zipName,
+        url,
+        filename: name || 'deck.zip',
         saveAs: true
+      }, () => {
+        URL.revokeObjectURL(url); // Optional: 清理資源
       });
-    });
+      console.log("下載完成");
+    } catch (err) {
+      console.error("下載錯誤：", err);
+    }
   }
 });
 

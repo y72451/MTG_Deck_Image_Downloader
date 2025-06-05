@@ -4,6 +4,7 @@
   "version": "1.1",
   "description": "從 Moxfield 與 Archidekt 匯出套牌並下載卡圖",
   "permissions": [
+    "storage",
     "scripting",
     "downloads",
     "tabs",
@@ -40,7 +41,8 @@
 "web_accessible_resources": [
   {
     "resources": [
-      "lib/jszip-esm2015.js"
+      "lib/jszip-esm2015.js",
+      "lib/indexeddb.js"
     ],
     "matches": ["<all_urls>"]
   }

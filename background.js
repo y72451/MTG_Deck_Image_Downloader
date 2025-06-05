@@ -1,9 +1,10 @@
 // background.js
 import JSZip from './lib/jszip-esm2015.js';
+import { saveZipBlob } from './lib/indexeddb.js';
 
 chrome.runtime.onMessage.addListener(async (message) => {
   if (message.action === "deck_ready") {
-	  	  console.log("準備開始下載");
+    console.log("準備開始下載");
     const { cards, deckName } = message;
     await handleDownload(cards, deckName);
   }
@@ -56,32 +57,23 @@ async function handleDownload(cards, deckName) {
     zip.file("failures.txt", failText);
   }
   console.log("pako exists?", typeof Deflate, typeof Inflate); // 確保被正確載入
-console.log("zip.files 內容:", Object.keys(zip.files)); // 確保不是空的
-console.log("開始打包與下載 zip...");
+  console.log("zip.files 內容:", Object.keys(zip.files)); // 確保不是空的
+  console.log("開始打包與下載 zip...");
+  let content;
   try {
-  console.log("files to zip:", Object.keys(zip.files));
-  const content = await zip.generateAsync({
-    type: "blob",
-    compression: "DEFLATE", // 確保壓縮模式存在
-    compressionOptions: { level: 6 }
-  });
-  console.log("zip.generateAsync 完成");
-} catch (err) {
-  console.error("壓縮出錯:", err);
-}
-  console.log("zip.generateAsync...");
-  const blobUrl = URL.createObjectURL(content);
-chrome.downloads.download({
-  url: blobUrl,
-  filename: `${sanitize(deckName) || "deck"}.zip`,
-  saveAs: true
-}, (downloadId) => {
-  if (chrome.runtime.lastError) {
-    console.error("下載錯誤:", chrome.runtime.lastError.message);
-  } else {
-    console.log("下載成功，ID:", downloadId);
+    console.log("files to zip:", Object.keys(zip.files));
+    content = await zip.generateAsync({
+      type: "blob",
+      compression: "DEFLATE", // 確保壓縮模式存在
+      compressionOptions: { level: 6 }
+    });
+    console.log("zip.generateAsync 完成");
+    await saveZipBlob(deckName, content); // 存進 IndexedDB
+    console.log("zip存入IndexedDB");
+    chrome.runtime.sendMessage({ action: "ZIP_READY" }); // 通知 popup
+  } catch (err) {
+    console.error("壓縮出錯:", err);
   }
-});
 }
 
 function sanitize(name) {
