@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MTG Deck Image Downloader",
-  "version": "1.0",
+  "version": "1.1",
   "description": "從 Moxfield 與 Archidekt 匯出套牌並下載卡圖",
   "permissions": [
     "scripting",
@@ -23,7 +23,8 @@
     }
   },
   "background": {
-    "service_worker": "background.js"
+	"service_worker": "background.js",
+	"type": "module"
   },
   "content_scripts": [
     {
@@ -36,14 +37,12 @@
       ]
     }
   ],
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "lib/jszip.min.js"
-      ],
-      "matches": [
-        "<all_urls>"
-      ]
-    }
-  ]
+"web_accessible_resources": [
+  {
+    "resources": [
+      "lib/jszip-esm2015.js"
+    ],
+    "matches": ["<all_urls>"]
+  }
+]
 }
