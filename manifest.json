@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "MTG Deck Image Downloader",
+  "version": "1.0",
+  "description": "從 Moxfield 與 Archidekt 匯出套牌並下載卡圖",
+  "permissions": [
+    "scripting",
+    "downloads",
+    "tabs",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://moxfield.com/decks/*",
+    "https://archidekt.com/decks/*",
+    "https://api.scryfall.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon.png",
+      "48": "icon.png",
+      "128": "icon.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://moxfield.com/decks/*",
+        "https://archidekt.com/decks/*"
+      ],
+      "js": [
+        "content.js"
+      ]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "lib/jszip.min.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
+}
