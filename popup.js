@@ -8,11 +8,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const progressText = document.getElementById("progress-text");
 
   fetchButton.addEventListener("click", async () => {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      files: ["content.js"]
-    });
+	console.log("clicked")
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });    
+    chrome.tabs.sendMessage(tab.id, { action: "start_fetch" });
+	
   });
 
   chrome.runtime.onMessage.addListener((message) => {
@@ -23,22 +22,27 @@ document.addEventListener("DOMContentLoaded", () => {
       progressFill.style.width = `${percent}%`;
       progressText.textContent = `${completed} / ${total}`;
     }
+	else if (message.action === "ZIP_BUILDING") {
+    // 顯示提示：正在壓縮中
+    progressText.textContent = "正在壓縮牌組...";
+	}
   });
 });
 
 
 // 接收壓縮完成訊息
 chrome.runtime.onMessage.addListener(async (message, sender) => {
-  if (message.type === 'ZIP_READY') {
+  if (message.action === 'ZIP_READY') {
     console.log("收到ZIP ready");
     try {
-      const { name, blob } = await getZipBlob();
+      const deckName = message.name;
+    const blob = await getZipBlob(deckName);
       console.log("取得zip blob");
+	  console.log("ZIP blob type:", blob, typeof blob);
       const url = URL.createObjectURL(blob);
-
       chrome.downloads.download({
         url,
-        filename: name || 'deck.zip',
+        filename: `${deckName || 'deck'}.zip`,
         saveAs: true
       }, () => {
         URL.revokeObjectURL(url); // Optional: 清理資源

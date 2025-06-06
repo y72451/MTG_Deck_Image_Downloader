@@ -56,8 +56,6 @@ async function handleDownload(cards, deckName) {
     const failText = failedCards.join("\n");
     zip.file("failures.txt", failText);
   }
-  console.log("pako exists?", typeof Deflate, typeof Inflate); // 確保被正確載入
-  console.log("zip.files 內容:", Object.keys(zip.files)); // 確保不是空的
   console.log("開始打包與下載 zip...");
   let content;
   try {
@@ -70,7 +68,7 @@ async function handleDownload(cards, deckName) {
     console.log("zip.generateAsync 完成");
     await saveZipBlob(deckName, content); // 存進 IndexedDB
     console.log("zip存入IndexedDB");
-    chrome.runtime.sendMessage({ action: "ZIP_READY" }); // 通知 popup
+    chrome.runtime.sendMessage({ action: 'ZIP_READY', name: deckName }); // 通知 popup
   } catch (err) {
     console.error("壓縮出錯:", err);
   }
@@ -82,4 +80,4 @@ function sanitize(name) {
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
-}// 保留空白，可未來擴充使用
+}
