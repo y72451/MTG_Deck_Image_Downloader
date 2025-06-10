@@ -57,9 +57,12 @@ async function handleDownload(cards, deckName) {
     zip.file("failures.txt", failText);
   }
   console.log("開始打包與下載 zip...");
+  
   let content;
   try {
     console.log("files to zip:", Object.keys(zip.files));
+    chrome.runtime.sendMessage({ action: "ZIP_BUILDING"});
+    SetZipSatus("ZIP_BUILDING");
     content = await zip.generateAsync({
       type: "blob",
       compression: "DEFLATE", // 確保壓縮模式存在
@@ -68,6 +71,8 @@ async function handleDownload(cards, deckName) {
     console.log("zip.generateAsync 完成");
     await saveZipBlob(deckName, content); // 存進 IndexedDB
     console.log("zip存入IndexedDB");
+    SetZipSatus("ZIP_READY");
+    
     chrome.runtime.sendMessage({ action: 'ZIP_READY', name: deckName }); // 通知 popup
   } catch (err) {
     console.error("壓縮出錯:", err);
@@ -80,4 +85,11 @@ function sanitize(name) {
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function SetZipSatus(status,zipName) {
+	chrome.storage.local.set({
+		zipStatus: status,
+    zipName:zipName
+	})
 }
