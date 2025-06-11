@@ -5,17 +5,39 @@ import { saveZipBlob } from './lib/indexeddb.js';
 chrome.runtime.onMessage.addListener(async (message) => {
   if (message.action === "deck_ready") {
     console.log("準備開始下載");
-    const { cards, deckName } = message;
-    await handleDownload(cards, deckName);
+    const { cards, deckName, uploader } = message;
+    await handleDownload(cards, deckName, uploader);
   }
 });
 
-async function handleDownload(cards, deckName) {
+let extraTextOption;
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === "start_fetch") {
+    extraTextOption = message.extraTextOption || null;
+
+    // 保險起見，也寫入 storage
+    chrome.storage.local.set({ extraTextOption });
+
+    console.log("儲存 extraTextOption:", extraTextOption);
+  }
+});
+
+async function handleDownload(cards, deckName,uploader) {
   const zip = new JSZip();
   const failedCards = [];
   let completed = 0;
   const total = cards.length;
 
+  const stored = await chrome.storage.local.get("extraTextOption");
+  let extraText = stored.extraTextOption || extraTextOption || "";
+  if (extraText == "DeckName")
+  {
+    extraText = deckName
+  }
+  else if (extraText == "Uploader")
+  {
+    extraText = uploader
+  }
   for (const card of cards) {
     try {
       const res = await fetch(`https://api.scryfall.com/cards/${card.scryfall_id}`);
@@ -39,7 +61,7 @@ async function handleDownload(cards, deckName) {
         const imgResp = await fetch(img.url);
         const blob = await imgResp.blob();
         const safeName = sanitize(card.name);
-        const filename = `${safeName}${img.suffix || ""}.png`;
+        const filename = extraText ? `${safeName}${img.suffix || ""}_${extraText}.png` : `${safeName}${img.suffix || ""}.png`;
         zip.file(filename, blob);
       }
     } catch (err) {

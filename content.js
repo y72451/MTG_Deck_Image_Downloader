@@ -22,11 +22,12 @@ async function fetchDeckData() {
   }
 
   if (deckInfo) {
-    const { cards, deckName } = deckInfo;
+    const { cards, deckName,uploader } = deckInfo;
     chrome.runtime.sendMessage({
       action: "deck_ready",
       deckName,
       cards,
+      uploader,
     });
   }
 }
@@ -59,6 +60,7 @@ async function fetchFromMoxfield(url) {
 
   return {
     deckName: data.name,
+    uploader: data.owner?.username || "unknown",
     cards,
   };
 }
@@ -90,6 +92,7 @@ async function fetchFromArchidekt(url) {
 
   return {
     deckName: data.name,
+    uploader: data.owner?.username || "unknown",
     cards,
   };
 }
