@@ -110,6 +110,8 @@ async function downloadZip(deckName) {
 function clearZipStatus()
 {
 	chrome.storage.local.remove(["zipStatus", "zipName"]);
+  chrome.storage.local.remove("extraTextOption");
+  
 }
 
 function getExtraTextOption() {
