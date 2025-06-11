@@ -1,6 +1,11 @@
 // popup.js
 import { getZipBlob } from './lib/indexeddb.js';
 
+document.getElementById("ExtraTextOption").addEventListener("change", (e) => {
+  const selected = e.target.value;
+  const customDiv = document.getElementById("CustomInput");
+  customDiv.style.display = selected === "Custom" ? "block" : "none";
+});
 
 document.addEventListener("DOMContentLoaded", async () => {
   const { status, zipName } = await getZipStatus();
@@ -41,6 +46,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!status) {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       chrome.tabs.sendMessage(tab.id, { action: "start_fetch" });
+      const extraTextOption = getExtraTextOption();
+      chrome.runtime.sendMessage({ action: "start_fetch", extraTextOption });
     }
 
 
@@ -103,4 +110,19 @@ async function downloadZip(deckName) {
 function clearZipStatus()
 {
 	chrome.storage.local.remove(["zipStatus", "zipName"]);
+}
+
+function getExtraTextOption() {
+  const option = document.getElementById("ExtraTextOption").value;
+  const customInput = document.getElementById("CustomInputValue").value.trim();
+
+  switch (option) {
+    case "DeckName":
+    case "Uploader":
+      return option;
+    case "Custom":
+      return customInput || "Custom";
+    default:
+      return "";
+  }
 }
