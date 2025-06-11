@@ -1,4 +1,33 @@
 // popup.js
+import { getZipBlob } from './lib/indexeddb.js';
+
+
+document.addEventListener("DOMContentLoaded", async () => {
+  const { status, zipName } = await getZipStatus();
+
+  const deckName = zipName
+  if (status)
+  {
+    if (status === "ZIP_READY") {
+      console.log("Get ZIP_READY");
+      await downloadZip(deckName);
+    }
+    else if (status === "ZIP_BUILDING") {
+      console.log("Get ZIP_BUILDING");
+      const progressContainer = document.getElementById("progress-container");
+      const progressText = document.getElementById("progress-text");
+      progressContainer.style.display = "block";
+      progressText.textContent = "正在壓縮牌組...";
+    }
+  }
+  else
+  {
+    console.log("Status undefined : "+ status);
+  }
+
+});
+
+
 
 document.addEventListener("DOMContentLoaded", () => {
   const fetchButton = document.getElementById("fetch-deck");
@@ -7,84 +36,71 @@ document.addEventListener("DOMContentLoaded", () => {
   const progressText = document.getElementById("progress-text");
 
   fetchButton.addEventListener("click", async () => {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      files: ["content.js"]
-    });
+    console.log("clicked")
+    const { status, zipName } = await getZipStatus();
+    if (!status) {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      chrome.tabs.sendMessage(tab.id, { action: "start_fetch" });
+    }
+
+
   });
 
-  chrome.runtime.onMessage.addListener(async (message) => {
-    if (message.action === "deck_ready") {
-      const { cards, deckName } = message;
-      const zip = new JSZip();
-	  const failedCards = [];
-	  
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.action === "progress") {
+      const { completed, total } = message;
+      const percent = (completed / total) * 100;
       progressContainer.style.display = "block";
-      let completed = 0;
-      const total = cards.length;
-      updateProgress(completed, total);
-
-      for (const card of cards) {
-        try {
-          const res = await fetch(`https://api.scryfall.com/cards/${card.scryfall_id}`);
-          const data = await res.json();
-          const images = [];
-
-        if (data.image_uris?.png) {
-          images.push({ url: data.image_uris.png, suffix: "" });
-        } 
-		else if (data.card_faces) {
-          data.card_faces.forEach((face, index) => {
-            if (face.image_uris?.png) {
-              images.push({ url: face.image_uris.png, suffix: `_face${index + 1}` });
-            }
-          });
-        }
-        else {
-          failedCards.push(card.name);
-        }
-
-        for (const img of images) {
-          const imgResp = await fetch(img.url);
-          const blob = await imgResp.blob();
-          const safeName = card.name.replace(/[\/\\:*?"<>|]/g, "_");
-          const filename = `${safeName}${img.suffix || ""}.png`;
-          zip.file(filename, blob);
-        }
-        } catch (err) {
-          console.warn("下載失敗:", card.name);
-        }
-        completed++;
-        updateProgress(completed, total);
-        await delay(100);
-      }
-	      // 如果有下載失敗的卡片，加入文字檔
-		if (failedCards.length > 0) {
-		  const failText = failedCards.join("\n");
-		  zip.file("failures.txt", failText);
-		}
-
-      const content = await zip.generateAsync({ type: "blob" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(content);
-      a.download = `${deckName || "deck"}.zip`;
-      a.click();
+      progressFill.style.width = `${percent}%`;
+      progressText.textContent = `${completed} / ${total}`;
+    }
+    else if (message.action === "ZIP_BUILDING") {
+      // 顯示提示：正在壓縮中
+      progressText.textContent = "正在壓縮牌組...";
     }
   });
-
-  function updateProgress(done, total) {
-    const percent = (done / total) * 100;
-    progressFill.style.width = `${percent}%`;
-    progressText.textContent = `${done} / ${total}`;
-  }
-
-  function delay(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
-  function sanitize(name) {
-    return name.replace(/[<>:"/\\|?*]+/g, "_");
-  }
-
 });
+
+
+// 接收壓縮完成訊息
+chrome.runtime.onMessage.addListener(async (message, sender) => {
+  if (message.action === 'ZIP_READY') {
+    console.log("收到ZIP ready");
+    downloadZip(message.name);
+  }
+});
+
+async function getZipStatus() {
+  const { zipStatus, zipName } = await chrome.storage.local.get(["zipStatus", "zipName"]);
+  return { status: zipStatus || null, zipName: zipName || null };
+
+}
+
+async function downloadZip(deckName) {
+  try {
+    const blob = await getZipBlob(deckName);
+    if (!blob) {
+      console.warn("ZIP blob 尚未就緒");
+      return;
+    }
+    console.log("取得zip blob");
+    console.log("ZIP blob type:", blob, typeof blob);
+    const url = URL.createObjectURL(blob);
+    chrome.downloads.download({
+      url,
+      filename: `${deckName || 'deck'}.zip`,
+      saveAs: true
+    }, () => {
+      URL.revokeObjectURL(url); // Optional: 清理資源
+    });
+    console.log("下載完成");
+    clearZipStatus();
+  } catch (err) {
+    console.error("下載錯誤：", err);
+  }
+}
+
+function clearZipStatus()
+{
+	chrome.storage.local.remove(["zipStatus", "zipName"]);
+}

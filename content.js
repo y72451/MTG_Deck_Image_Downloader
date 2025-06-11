@@ -1,4 +1,14 @@
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.action === "start_fetch") {
+    fetchDeckData(); // 只有在收到來自 popup 的請求時才執行
+  }
+});
+
+
+
 async function fetchDeckData() {
+	console.trace()
   const url = window.location.href;
   let deckInfo = null;
 	console.log("解析網址:"+url);
@@ -83,4 +93,3 @@ async function fetchFromArchidekt(url) {
     cards,
   };
 }
-fetchDeckData();
