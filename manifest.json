@@ -8,7 +8,8 @@
     "scripting",
     "downloads",
     "tabs",
-    "activeTab"
+    "activeTab",
+    "notifications"
   ],
   "host_permissions": [
     "https://moxfield.com/decks/*",

@@ -97,6 +97,13 @@ async function handleDownload(cards, deckName,uploader) {
     SetZipSatus("ZIP_READY",deckName);
     
     chrome.runtime.sendMessage({ action: 'ZIP_READY', name: deckName }); // 通知 popup
+    chrome.notifications.create({
+      type: "basic",
+      iconUrl: "icon.png",
+      title: "牌組壓縮完成",
+      message: "壓縮已完成，請開啟擴充功能以開始下載。",
+      priority: 2
+    });
   } catch (err) {
     console.error("壓縮出錯:", err);
   }
