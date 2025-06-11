@@ -8,12 +8,17 @@ chrome.runtime.onMessage.addListener((message) => {
 
 
 async function fetchDeckData() {
-	console.trace()
+  console.trace()
   const url = window.location.href;
   let deckInfo = null;
-	console.log("解析網址:"+url);
+  console.log("解析網址:" + url);
   if (url.includes("moxfield.com/decks/")) {
-    deckInfo = await fetchFromMoxfield(url);
+    if (url.includes("compare")) {
+      fetchFromMoxfieldCompare(url);
+    }
+    else {
+      deckInfo = await fetchFromMoxfield(url);
+    }
   } else if (url.includes("archidekt.com/decks/")) {
     deckInfo = await fetchFromArchidekt(url);
   } else {
@@ -22,7 +27,7 @@ async function fetchDeckData() {
   }
 
   if (deckInfo) {
-    const { cards, deckName,uploader } = deckInfo;
+    const { cards, deckName, uploader } = deckInfo;
     chrome.runtime.sendMessage({
       action: "deck_ready",
       deckName,
@@ -32,7 +37,7 @@ async function fetchDeckData() {
   }
 }
 async function fetchFromMoxfield(url) {
-	console.log("讀取moxfield");
+  console.log("讀取moxfield");
   const match = url.match(/\/decks\/([a-zA-Z0-9_-]+)/);
   if (!match) {
     alert("無法識別 Moxfield 牌組 ID");
@@ -65,8 +70,26 @@ async function fetchFromMoxfield(url) {
   };
 }
 
+async function fetchFromMoxfieldCompare(url) {
+  const match = url.match(/\/decks\/([a-zA-Z0-9_-]+)\/compare\/([a-zA-Z0-9_-]+)/);
+
+  if (match) {
+    const deckId1 = match[1];
+    const deckId2 = match[2];
+    console.log("Deck A:", deckId1, "Deck B:", deckId2);
+    const apiUrl = `https://api.moxfield.com/v1/decks/${deckId1}/compare/${deckId2}`; //404
+    const res = await fetch(apiUrl);
+    const data = await res.json();
+    console.log(data);
+  } else {
+    console.error("無法解析比較牌組 URL");
+  }
+
+
+}
+
 async function fetchFromArchidekt(url) {
-	console.log("讀取Archidekt");
+  console.log("讀取Archidekt");
   const match = url.match(/\/decks\/(\d+)/);
   if (!match) {
     alert("無法識別 Archidekt 牌組 ID");
