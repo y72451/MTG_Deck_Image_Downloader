@@ -9,9 +9,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (status)
   {
     if (status === "ZIP_READY") {
+      console.log("Get ZIP_READY");
       await downloadZip(deckName);
     }
     else if (status === "ZIP_BUILDING") {
+      console.log("Get ZIP_BUILDING");
+      const progressContainer = document.getElementById("progress-container");
+      const progressText = document.getElementById("progress-text");
       progressContainer.style.display = "block";
       progressText.textContent = "正在壓縮牌組...";
     }
@@ -67,8 +71,8 @@ chrome.runtime.onMessage.addListener(async (message, sender) => {
 });
 
 async function getZipStatus() {
-  const { status, zipName } = await chrome.storage.local.get(["zipStatus", "zipName"]);
-  return { status: status || null, zipName: zipName || null };
+  const { zipStatus, zipName } = await chrome.storage.local.get(["zipStatus", "zipName"]);
+  return { status: zipStatus || null, zipName: zipName || null };
 
 }
 
