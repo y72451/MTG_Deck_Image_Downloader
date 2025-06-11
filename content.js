@@ -8,10 +8,9 @@ chrome.runtime.onMessage.addListener((message) => {
 
 
 async function fetchDeckData() {
-	console.trace()
   const url = window.location.href;
   let deckInfo = null;
-	console.log("解析網址:"+url);
+  console.log("解析網址:" + url);
   if (url.includes("moxfield.com/decks/")) {
     deckInfo = await fetchFromMoxfield(url);
   } else if (url.includes("archidekt.com/decks/")) {
@@ -22,7 +21,7 @@ async function fetchDeckData() {
   }
 
   if (deckInfo) {
-    const { cards, deckName,uploader } = deckInfo;
+    const { cards, deckName, uploader } = deckInfo;
     chrome.runtime.sendMessage({
       action: "deck_ready",
       deckName,
@@ -32,7 +31,7 @@ async function fetchDeckData() {
   }
 }
 async function fetchFromMoxfield(url) {
-	console.log("讀取moxfield");
+  console.log("讀取moxfield");
   const match = url.match(/\/decks\/([a-zA-Z0-9_-]+)/);
   if (!match) {
     alert("無法識別 Moxfield 牌組 ID");
@@ -44,6 +43,7 @@ async function fetchFromMoxfield(url) {
 
   const res = await fetch(apiUrl);
   const data = await res.json();
+  //console.log(data);
 
   const cards = [];
   const sections = [data.commanders, data.mainboard, data.sideboard];
@@ -60,13 +60,13 @@ async function fetchFromMoxfield(url) {
 
   return {
     deckName: data.name,
-    uploader: data.owner?.username || "unknown",
+    uploader: data.authors?.[0]?.displayName || "unknown",
     cards,
   };
 }
 
 async function fetchFromArchidekt(url) {
-	console.log("讀取Archidekt");
+  console.log("讀取Archidekt");
   const match = url.match(/\/decks\/(\d+)/);
   if (!match) {
     alert("無法識別 Archidekt 牌組 ID");
@@ -78,7 +78,7 @@ async function fetchFromArchidekt(url) {
 
   const res = await fetch(apiUrl);
   const data = await res.json();
-
+  //console.log(data);
   const cards = [];
   for (const cardObj of data.cards) {
     const card = cardObj.card || {};
