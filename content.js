@@ -1,7 +1,16 @@
 
 chrome.runtime.onMessage.addListener((message) => {
+  console.log("Content get msg:"+message.action);
+    
   if (message.action === "start_fetch") {
     fetchDeckData(); // 只有在收到來自 popup 的請求時才執行
+  }
+  else if (message.action === "ZIP_BUILDING") {
+    // 顯示提示：正在壓縮中
+    startPingBackgroundWhileZipping();
+  }
+  else if (message.action === "ZIP_READY") {
+    stopPingBackground();
   }
 });
 
@@ -28,6 +37,7 @@ async function fetchDeckData() {
       cards,
       uploader,
     });
+    //console.log("content:送出牌組資訊");
   }
 }
 async function fetchFromMoxfield(url) {
@@ -95,4 +105,22 @@ async function fetchFromArchidekt(url) {
     uploader: data.owner?.username || "unknown",
     cards,
   };
+}
+
+let pingIntervalId = null;
+
+function startPingBackgroundWhileZipping() {
+  if (pingIntervalId) return; // 避免重複啟動
+
+  pingIntervalId = setInterval(() => {
+    chrome.runtime.sendMessage({ action: "keep_alive" });
+    console.log("ping background to keep alive");
+  }, 10000); // 每 10 秒 ping 一次
+}
+
+function stopPingBackground() {
+  if (pingIntervalId) {
+    clearInterval(pingIntervalId);
+    pingIntervalId = null;
+  }
 }

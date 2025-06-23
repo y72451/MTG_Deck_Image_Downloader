@@ -123,3 +123,10 @@ function SetZipSatus(status,zipName) {
     zipName:zipName
 	})
 }
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === "keep_alive") {
+    sendResponse({ status: "ok" });
+    console.log("Get Pinged");
+  }
+});
