@@ -127,4 +127,11 @@ function getExtraTextOption() {
     default:
       return "";
   }
+document.getElementById("reset-download").addEventListener("click", async () => {
+  clearZipStatus();
+  if (currentBlobUrl) {
+    URL.revokeObjectURL(currentBlobUrl);
+  }
+  showStatus("已重設下載狀態");
+});
 }
