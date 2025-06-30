@@ -61,8 +61,17 @@ async function handleDownload(cards, deckName,uploader) {
         const imgResp = await fetch(img.url);
         const blob = await imgResp.blob();
         const safeName = sanitize(card.name);
-        const filename = extraText ? `${safeName}${img.suffix || ""}_${extraText}.png` : `${safeName}${img.suffix || ""}.png`;
-        zip.file(filename, blob);
+        const baseFilename = extraText
+          ? `${safeName}${img.suffix || ""}_${extraText}`
+          : `${safeName}${img.suffix || ""}`;
+        const count = Math.max(card.quantity || 1, 1);
+        for (let i = 1; i <= count; i++) {
+          const filename =
+            count === 1
+              ? `${baseFilename}.png`
+              : `${baseFilename}_${i}.png`;
+          zip.file(filename, blob);
+        }
       }
     } catch (err) {
       console.warn("下載失敗:", card.name);
