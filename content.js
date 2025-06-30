@@ -115,7 +115,7 @@ function startPingBackgroundWhileZipping() {
   pingIntervalId = setInterval(() => {
     chrome.runtime.sendMessage({ action: "keep_alive" });
     console.log("ping background to keep alive");
-  }, 10000); // 每 10 秒 ping 一次
+  }, 5000); // 每 5 秒 ping 一次
 }
 
 function stopPingBackground() {

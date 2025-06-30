@@ -22,7 +22,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-async function handleDownload(cards, deckName,uploader) {
+async function handleDownload(cards, deckName, uploader) {
   const zip = new JSZip();
   const failedCards = [];
   let completed = 0;
@@ -30,12 +30,10 @@ async function handleDownload(cards, deckName,uploader) {
 
   const stored = await chrome.storage.local.get("extraTextOption");
   let extraText = stored.extraTextOption || extraTextOption || "";
-  if (extraText == "DeckName")
-  {
+  if (extraText == "DeckName") {
     extraText = deckName
   }
-  else if (extraText == "Uploader")
-  {
+  else if (extraText == "Uploader") {
     extraText = uploader
   }
   for (const card of cards) {
@@ -88,11 +86,11 @@ async function handleDownload(cards, deckName,uploader) {
     zip.file("failures.txt", failText);
   }
   console.log("開始打包與下載 zip...");
-  
+
   let content;
   try {
     //console.log("files to zip:", Object.keys(zip.files));
-    chrome.runtime.sendMessage({ action: "ZIP_BUILDING"});
+    chrome.runtime.sendMessage({ action: "ZIP_BUILDING" });
     SetZipSatus("ZIP_BUILDING");
     //chrome.storage.local.get(null, console.log)
     content = await zip.generateAsync({
@@ -103,8 +101,8 @@ async function handleDownload(cards, deckName,uploader) {
     console.log("zip.generateAsync 完成");
     await saveZipBlob(deckName, content); // 存進 IndexedDB
     console.log("zip存入IndexedDB");
-    SetZipSatus("ZIP_READY",deckName);
-    
+    SetZipSatus("ZIP_READY", deckName);
+
     chrome.runtime.sendMessage({ action: 'ZIP_READY', name: deckName }); // 通知 popup
     chrome.notifications.create({
       type: "basic",
@@ -126,16 +124,17 @@ function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function SetZipSatus(status,zipName) {
-	chrome.storage.local.set({
-		zipStatus: status,
-    zipName:zipName
-	})
+function SetZipSatus(status, zipName) {
+  chrome.storage.local.set({
+    zipStatus: status,
+    zipName: zipName
+  })
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "keep_alive") {
     sendResponse({ status: "ok" });
+    chrome.runtime.sendMessage({action: 'Response Ping'});
     console.log("Get Pinged");
   }
 });

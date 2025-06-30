@@ -39,6 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const progressContainer = document.getElementById("progress-container");
   const progressFill = document.getElementById("progress-fill");
   const progressText = document.getElementById("progress-text");
+  const pingText = document.getElementById("ping-text");
 
   fetchButton.addEventListener("click", async () => {
     console.log("clicked")
@@ -64,6 +65,11 @@ document.addEventListener("DOMContentLoaded", () => {
     else if (message.action === "ZIP_BUILDING") {
       // 顯示提示：正在壓縮中
       progressText.textContent = "正在壓縮牌組...";
+    }
+    else if (message.action === "Response Ping")
+    {
+      //顯示接收到訊息
+      StartPingText();
     }
   });
 });
@@ -127,6 +133,8 @@ function getExtraTextOption() {
     default:
       return "";
   }
+}
+
 document.getElementById("reset-download").addEventListener("click", async () => {
   clearZipStatus();
   if (currentBlobUrl) {
@@ -134,4 +142,45 @@ document.getElementById("reset-download").addEventListener("click", async () => 
   }
   showStatus("已重設下載狀態");
 });
+
+
+function StartPingText()
+{
+  backgroundActiveSeconds = 0;
+  UpdatePingText();
+
+  if (backgroundStatusTimer) {
+    clearInterval(backgroundStatusTimer);
+  }
+
+  backgroundStatusTimer = setInterval(() => {
+    backgroundActiveSeconds++;
+    UpdatePingText();
+  }, 1000);
+
+  monitorBackgroundTimeout();
+}
+
+function monitorBackgroundTimeout() {
+  setTimeout(() => {
+    if (backgroundActiveSeconds >= 20) {
+      if (pingText) {
+        pingText.textContent = `背景程式可能已停止，請重新啟動`;
+      }
+      clearInterval(backgroundStatusTimer);
+      backgroundStatusTimer = null;
+    }
+  }, 21000); // 設定稍長於 20 秒以確保計算穩定
+}
+
+function UpdatePingText()
+{  
+  if (pingText) {
+    pingText.textContent = `背景程式運作中...（${backgroundActiveSeconds} 秒）`;
+  }
+}
+
+function StopPingText()
+{
+  pingText.textContent = "";
 }
