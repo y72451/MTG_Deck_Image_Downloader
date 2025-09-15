@@ -41,7 +41,7 @@ async function handleDownload(cards, deckName, uploader) {
   const failedCards = [];
   let completed = 0;
   const total = cards.length;
-
+  let safeDeckName = sanitize(deckName); 
   const stored = await chrome.storage.local.get("extraTextOption");
   let extraText = stored.extraTextOption || extraTextOption || "";
   if (extraText == "DeckName") {
@@ -116,9 +116,9 @@ async function handleDownload(cards, deckName, uploader) {
       compressionOptions: { level: 6 }
     });
     console.log("zip.generateAsync 完成");
-    await saveZipBlob(deckName, content); // 存進 IndexedDB
+    await saveZipBlob(safeDeckName, content); // 存進 IndexedDB
     console.log("zip存入IndexedDB");
-    SetZipSatus("ZIP_READY", deckName);
+    SetZipSatus("ZIP_READY", safeDeckName);
 
     chrome.runtime.sendMessage({ action: 'ZIP_READY', name: safeDeckName }); // 通知 popup
     if (contentTabId != null) {

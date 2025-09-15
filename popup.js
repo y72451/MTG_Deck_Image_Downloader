@@ -1,6 +1,14 @@
 // popup.js
 import { getZipBlob } from './lib/indexeddb.js';
 
+function sanitizeName(name) {
+  return (name || 'deck')
+    .replace(/[<>:"/\\|?*]+/g, "_")        // Windows 不允許字元
+    .replace(/[\u0000-\u001F\u007F]/g, "_") // 控制字元
+    .replace(/[. ]+$/g, "_")                  // 結尾是空白或點
+    .slice(0, 180);                             // 預留副檔名空間，避免過長
+}
+
 document.getElementById("ExtraTextOption").addEventListener("change", (e) => {
   const selected = e.target.value;
   const customDiv = document.getElementById("CustomInput");
@@ -99,9 +107,11 @@ async function downloadZip(deckName) {
     console.log("取得zip blob");
     console.log("ZIP blob type:", blob, typeof blob);
     const url = URL.createObjectURL(blob);
+
+    const safe = sanitizeName(deckName);
     chrome.downloads.download({
       url,
-      filename: `${deckName || 'deck'}.zip`,
+      filename: `${safe || 'deck'}.zip`,
       saveAs: true
     }, () => {
       URL.revokeObjectURL(url); // Optional: 清理資源
