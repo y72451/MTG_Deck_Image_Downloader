@@ -110,7 +110,12 @@ async function fetchFromArchidekt(url) {
 let pingIntervalId = null;
 
 function startPingBackgroundWhileZipping() {
-  if (pingIntervalId) return; // 避免重複啟動
+  console.log("startPingBackgroundWhileZipping");
+  if (pingIntervalId)
+    {
+      console.log("pingIntervalId is not null");
+      return; // 避免重複啟動
+    } 
 
   pingIntervalId = setInterval(() => {
     chrome.runtime.sendMessage({ action: "keep_alive" });

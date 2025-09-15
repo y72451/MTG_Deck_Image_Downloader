@@ -2,23 +2,37 @@
 import JSZip from './lib/jszip-esm2015.js';
 import { saveZipBlob } from './lib/indexeddb.js';
 
-chrome.runtime.onMessage.addListener(async (message) => {
+let extraTextOption;
+let contentTabId = null;
+
+// 合併所有訊息監聽器
+chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+  console.log("Background 收到訊息:", message.action);
+  
   if (message.action === "deck_ready") {
     console.log("準備開始下載");
     const { cards, deckName, uploader } = message;
+    contentTabId = sender?.tab?.id || contentTabId;
     await handleDownload(cards, deckName, uploader);
   }
-});
-
-let extraTextOption;
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === "start_fetch") {
+  else if (message.action === "start_fetch") {
     extraTextOption = message.extraTextOption || null;
+    contentTabId = sender?.tab?.id || contentTabId;
 
     // 保險起見，也寫入 storage
     chrome.storage.local.set({ extraTextOption });
 
     console.log("儲存 extraTextOption:", extraTextOption);
+  }
+  else if (message.action === "keep_alive") {
+    sendResponse({ status: "ok" });
+    // 使用 storage 記錄最後一次 ping 的時間
+    const currentTime = Date.now();
+    chrome.storage.local.set({ 
+      lastPingTime: currentTime,
+      backgroundActive: true 
+    });
+    console.log("Background: 記錄 ping 時間", currentTime);
   }
 });
 
@@ -91,6 +105,9 @@ async function handleDownload(cards, deckName, uploader) {
   try {
     //console.log("files to zip:", Object.keys(zip.files));
     chrome.runtime.sendMessage({ action: "ZIP_BUILDING" });
+    if (contentTabId != null) {
+      try { chrome.tabs.sendMessage(contentTabId, { action: "ZIP_BUILDING" }); } catch (e) { console.warn("tabs.sendMessage ZIP_BUILDING 失敗:", e); }
+    }
     SetZipSatus("ZIP_BUILDING");
     //chrome.storage.local.get(null, console.log)
     content = await zip.generateAsync({
@@ -103,7 +120,10 @@ async function handleDownload(cards, deckName, uploader) {
     console.log("zip存入IndexedDB");
     SetZipSatus("ZIP_READY", deckName);
 
-    chrome.runtime.sendMessage({ action: 'ZIP_READY', name: deckName }); // 通知 popup
+    chrome.runtime.sendMessage({ action: 'ZIP_READY', name: safeDeckName }); // 通知 popup
+    if (contentTabId != null) {
+      try { chrome.tabs.sendMessage(contentTabId, { action: 'ZIP_READY', name: safeDeckName }); } catch (e) { console.warn("tabs.sendMessage ZIP_READY 失敗:", e); }
+    }
     chrome.notifications.create({
       type: "basic",
       iconUrl: "icon.png",
@@ -130,11 +150,3 @@ function SetZipSatus(status, zipName) {
     zipName: zipName
   })
 }
-
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === "keep_alive") {
-    sendResponse({ status: "ok" });
-    chrome.runtime.sendMessage({action: 'Response Ping'});
-    console.log("Get Pinged");
-  }
-});
