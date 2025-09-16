@@ -9,6 +9,50 @@ function sanitizeName(name) {
     .slice(0, 180);                             // 預留副檔名空間，避免過長
 }
 
+// 以單一 progress-text 顯示進度與 keep-alive 秒數
+let pingSeconds = 0;
+let pingTimerId = null;
+
+function startPingUI() {
+  if (pingTimerId) return;
+  pingSeconds = 0;
+  pingTimerId = setInterval(() => {
+    pingSeconds++;
+    updateProgressLabel();
+  }, 1000);
+}
+
+function stopPingUI() {
+  if (pingTimerId) {
+    clearInterval(pingTimerId);
+    pingTimerId = null;
+  }
+}
+
+// 動態文字更新：優先顯示 progress，沒有就顯示壓縮中 + 秒數
+let lastProgress = { completed: 0, total: 0 };
+function updateProgressState(completed, total) {
+  lastProgress = { completed, total };
+  updateProgressLabel();
+}
+
+function updateProgressLabel(statusText) {
+  const progressText = document.getElementById("progress-text");
+  if (!progressText) return;
+
+  if (statusText) {
+    progressText.textContent = statusText;
+    return;
+  }
+
+  const { completed, total } = lastProgress || {};
+  if (total && total > 0) {
+    progressText.textContent = `${completed} / ${total}`;
+  } else {
+    progressText.textContent = `正在壓縮牌組...（${pingSeconds} 秒）`;
+  }
+}
+
 document.getElementById("ExtraTextOption").addEventListener("change", (e) => {
   const selected = e.target.value;
   const customDiv = document.getElementById("CustomInput");
@@ -23,6 +67,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   {
     if (status === "ZIP_READY") {
       console.log("Get ZIP_READY");
+      updateProgressLabel("壓縮完成，準備下載...");
+      stopPingUI();
       await downloadZip(deckName);
     }
     else if (status === "ZIP_BUILDING") {
@@ -30,7 +76,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       const progressContainer = document.getElementById("progress-container");
       const progressText = document.getElementById("progress-text");
       progressContainer.style.display = "block";
-      progressText.textContent = "正在壓縮牌組...";
+      updateProgressLabel("正在壓縮牌組...");
+      startPingUI();
+      lastProgress = { completed: 0, total: 0 };
+      updateProgressLabel();
     }
   }
   else
@@ -47,7 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const progressContainer = document.getElementById("progress-container");
   const progressFill = document.getElementById("progress-fill");
   const progressText = document.getElementById("progress-text");
-  const pingText = document.getElementById("ping-text");
+  
 
   fetchButton.addEventListener("click", async () => {
     console.log("clicked")
@@ -68,16 +117,15 @@ document.addEventListener("DOMContentLoaded", () => {
       const percent = (completed / total) * 100;
       progressContainer.style.display = "block";
       progressFill.style.width = `${percent}%`;
-      progressText.textContent = `${completed} / ${total}`;
+      updateProgressState(completed, total);
     }
     else if (message.action === "ZIP_BUILDING") {
       // 顯示提示：正在壓縮中
+      progressContainer.style.display = "block";
       progressText.textContent = "正在壓縮牌組...";
-    }
-    else if (message.action === "Response Ping")
-    {
-      //顯示接收到訊息
-      StartPingText();
+      startPingUI();
+      lastProgress = { completed: 0, total: 0 };
+      updateProgressLabel();
     }
   });
 });
@@ -87,6 +135,8 @@ document.addEventListener("DOMContentLoaded", () => {
 chrome.runtime.onMessage.addListener(async (message, sender) => {
   if (message.action === 'ZIP_READY') {
     console.log("收到ZIP ready");
+    stopPingUI();
+    updateProgressLabel("壓縮完成，準備下載...");
     downloadZip(message.name);
   }
 });
@@ -152,45 +202,3 @@ document.getElementById("reset-download").addEventListener("click", async () => 
   }
   showStatus("已重設下載狀態");
 });
-
-
-function StartPingText()
-{
-  backgroundActiveSeconds = 0;
-  UpdatePingText();
-
-  if (backgroundStatusTimer) {
-    clearInterval(backgroundStatusTimer);
-  }
-
-  backgroundStatusTimer = setInterval(() => {
-    backgroundActiveSeconds++;
-    UpdatePingText();
-  }, 1000);
-
-  monitorBackgroundTimeout();
-}
-
-function monitorBackgroundTimeout() {
-  setTimeout(() => {
-    if (backgroundActiveSeconds >= 20) {
-      if (pingText) {
-        pingText.textContent = `背景程式可能已停止，請重新啟動`;
-      }
-      clearInterval(backgroundStatusTimer);
-      backgroundStatusTimer = null;
-    }
-  }, 21000); // 設定稍長於 20 秒以確保計算穩定
-}
-
-function UpdatePingText()
-{  
-  if (pingText) {
-    pingText.textContent = `背景程式運作中...（${backgroundActiveSeconds} 秒）`;
-  }
-}
-
-function StopPingText()
-{
-  pingText.textContent = "";
-}
