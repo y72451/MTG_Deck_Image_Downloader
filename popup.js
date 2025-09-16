@@ -1,6 +1,58 @@
 // popup.js
 import { getZipBlob } from './lib/indexeddb.js';
 
+function sanitizeName(name) {
+  return (name || 'deck')
+    .replace(/[<>:"/\\|?*]+/g, "_")        // Windows 不允許字元
+    .replace(/[\u0000-\u001F\u007F]/g, "_") // 控制字元
+    .replace(/[. ]+$/g, "_")                  // 結尾是空白或點
+    .slice(0, 180);                             // 預留副檔名空間，避免過長
+}
+
+// 以單一 progress-text 顯示進度與 keep-alive 秒數
+let pingSeconds = 0;
+let pingTimerId = null;
+
+function startPingUI() {
+  if (pingTimerId) return;
+  pingSeconds = 0;
+  pingTimerId = setInterval(() => {
+    pingSeconds++;
+    updateProgressLabel();
+  }, 1000);
+}
+
+function stopPingUI() {
+  if (pingTimerId) {
+    clearInterval(pingTimerId);
+    pingTimerId = null;
+  }
+}
+
+// 動態文字更新：優先顯示 progress，沒有就顯示壓縮中 + 秒數
+let lastProgress = { completed: 0, total: 0 };
+function updateProgressState(completed, total) {
+  lastProgress = { completed, total };
+  updateProgressLabel();
+}
+
+function updateProgressLabel(statusText) {
+  const progressText = document.getElementById("progress-text");
+  if (!progressText) return;
+
+  if (statusText) {
+    progressText.textContent = statusText;
+    return;
+  }
+
+  const { completed, total } = lastProgress || {};
+  if (total && total > 0) {
+    progressText.textContent = `${completed} / ${total}`;
+  } else {
+    progressText.textContent = `正在壓縮牌組...（${pingSeconds} 秒）`;
+  }
+}
+
 document.getElementById("ExtraTextOption").addEventListener("change", (e) => {
   const selected = e.target.value;
   const customDiv = document.getElementById("CustomInput");
@@ -15,6 +67,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   {
     if (status === "ZIP_READY") {
       console.log("Get ZIP_READY");
+      updateProgressLabel("壓縮完成，準備下載...");
+      stopPingUI();
       await downloadZip(deckName);
     }
     else if (status === "ZIP_BUILDING") {
@@ -22,7 +76,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       const progressContainer = document.getElementById("progress-container");
       const progressText = document.getElementById("progress-text");
       progressContainer.style.display = "block";
-      progressText.textContent = "正在壓縮牌組...";
+      updateProgressLabel("正在壓縮牌組...");
+      startPingUI();
+      lastProgress = { completed: 0, total: 0 };
+      updateProgressLabel();
     }
   }
   else
@@ -39,6 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const progressContainer = document.getElementById("progress-container");
   const progressFill = document.getElementById("progress-fill");
   const progressText = document.getElementById("progress-text");
+  
 
   fetchButton.addEventListener("click", async () => {
     console.log("clicked")
@@ -59,11 +117,15 @@ document.addEventListener("DOMContentLoaded", () => {
       const percent = (completed / total) * 100;
       progressContainer.style.display = "block";
       progressFill.style.width = `${percent}%`;
-      progressText.textContent = `${completed} / ${total}`;
+      updateProgressState(completed, total);
     }
     else if (message.action === "ZIP_BUILDING") {
       // 顯示提示：正在壓縮中
+      progressContainer.style.display = "block";
       progressText.textContent = "正在壓縮牌組...";
+      startPingUI();
+      lastProgress = { completed: 0, total: 0 };
+      updateProgressLabel();
     }
   });
 });
@@ -73,6 +135,8 @@ document.addEventListener("DOMContentLoaded", () => {
 chrome.runtime.onMessage.addListener(async (message, sender) => {
   if (message.action === 'ZIP_READY') {
     console.log("收到ZIP ready");
+    stopPingUI();
+    updateProgressLabel("壓縮完成，準備下載...");
     downloadZip(message.name);
   }
 });
@@ -93,9 +157,11 @@ async function downloadZip(deckName) {
     console.log("取得zip blob");
     console.log("ZIP blob type:", blob, typeof blob);
     const url = URL.createObjectURL(blob);
+
+    const safe = sanitizeName(deckName);
     chrome.downloads.download({
       url,
-      filename: `${deckName || 'deck'}.zip`,
+      filename: `${safe || 'deck'}.zip`,
       saveAs: true
     }, () => {
       URL.revokeObjectURL(url); // Optional: 清理資源
@@ -128,3 +194,11 @@ function getExtraTextOption() {
       return "";
   }
 }
+
+document.getElementById("reset-download").addEventListener("click", async () => {
+  clearZipStatus();
+  if (currentBlobUrl) {
+    URL.revokeObjectURL(currentBlobUrl);
+  }
+  showStatus("已重設下載狀態");
+});
